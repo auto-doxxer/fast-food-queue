@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fast Food Queue</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0a0a0f;
+    --surface:   #12121a;
+    --surface2:  #1a1a26;
+    --border:    #2a2a3d;
+    --accent:    #f0a500;
+    --accent2:   #e05c00;
+    --green:     #00e5a0;
+    --red:       #ff4d6d;
+    --blue:      #4d9fff;
+    --text:      #e8e8f0;
+    --muted:     #6b6b8a;
+    --font-head: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(240,165,0,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(240,165,0,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Glow orbs */
+  body::after {
+    content: '';
+    position: fixed;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(240,165,0,0.06) 0%, transparent 70%);
+    top: -200px; left: -200px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 0 24px 60px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── HEADER ── */
+  header {
+    padding: 36px 0 32px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .logo-icon {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    box-shadow: 0 0 20px rgba(240,165,0,0.3);
+  }
+
+  .logo-text h1 {
+    font-family: var(--font-head);
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+
+  .logo-text span {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .status-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,229,160,0.4); }
+    50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(0,229,160,0); }
+  }
+
+  /* ── STATS ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 24px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+
+  .stat-card:hover { border-color: var(--accent); }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .stat-card:hover::before { opacity: 1; }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 10px;
+  }
+
+  .stat-value {
+    font-family: var(--font-head);
+    font-size: 40px;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .stat-value.bump {
+    transform: scale(1.2);
+    color: var(--green);
+  }
+
+  /* ── MAIN GRID ── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  /* ── PANEL ── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .panel-title {
+    font-family: var(--font-head);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .panel-title .icon { font-size: 16px; }
+
+  .panel-badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-family: var(--font-mono);
+  }
+
+  .panel-body { padding: 20px 24px; }
+
+  /* ── FORM ── */
+  .form-group { margin-bottom: 14px; }
+
+  .form-label {
+    display: block;
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 7px;
+  }
+
+  .form-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 14px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+
+  .form-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(240,165,0,0.1);
+  }
+
+  .form-input::placeholder { color: var(--muted); }
+
+  .btn {
+    width: 100%;
+    padding: 13px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-head);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: white;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .btn:active::after { opacity: 0.1; }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #0a0a0f;
+    box-shadow: 0 4px 20px rgba(240,165,0,0.25);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(240,165,0,0.35);
+  }
+
+  .btn-process {
+    background: linear-gradient(135deg, var(--green), #00b880);
+    color: #0a0a0f;
+    box-shadow: 0 4px 20px rgba(0,229,160,0.2);
+    margin-top: 8px;
+  }
+
+  .btn-process:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(0,229,160,0.3);
+  }
+
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tab {
+    padding: 14px 24px;
+    font-family: var(--font-head);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tab:hover { color: var(--text); }
+
+  .tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .tab-count {
+    background: var(--surface2);
+    color: var(--muted);
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    transition: all 0.2s;
+  }
+
+  .tab.active .tab-count {
+    background: rgba(240,165,0,0.15);
+    color: var(--accent);
+  }
+
+  .tab-panel { display: none; padding: 20px 24px; }
+  .tab-panel.active { display: block; }
+
+  /* ── ORDER CARD ── */
+  .order-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    animation: slideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: border-color 0.2s;
+  }
+
+  .order-card:hover { border-color: rgba(240,165,0,0.3); }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-20px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes slideOut {
+    from { opacity: 1; transform: translateX(0); max-height: 200px; }
+    to   { opacity: 0; transform: translateX(20px); max-height: 0; padding: 0; margin: 0; }
+  }
+
+  .order-card.removing {
+    animation: slideOut 0.3s ease forwards;
+  }
+
+  .order-position {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-head);
+    font-size: 13px;
+    font-weight: 800;
+    color: #0a0a0f;
+    flex-shrink: 0;
+  }
+
+  .order-history-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: rgba(0,229,160,0.1);
+    border: 1px solid rgba(0,229,160,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .order-info { flex: 1; min-width: 0; }
+
+  .order-customer {
+    font-family: var(--font-head);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .order-menu {
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .order-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+
+  .order-id {
+    font-size: 10px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+  }
+
+  .order-qty {
+    background: rgba(240,165,0,0.1);
+    border: 1px solid rgba(240,165,0,0.2);
+    color: var(--accent);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-weight: 500;
+  }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+  }
+
+  .empty-state .empty-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+    opacity: 0.4;
+  }
+
+  .empty-state p {
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  /* ── TOAST ── */
+  #toast-container {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .toast {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    min-width: 280px;
+    max-width: 360px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    animation: toastIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateX(60px) scale(0.9); }
+    to   { opacity: 1; transform: translateX(0) scale(1); }
+  }
+
+  @keyframes toastOut {
+    from { opacity: 1; transform: translateX(0); }
+    to   { opacity: 0; transform: translateX(60px); }
+  }
+
+  .toast.removing { animation: toastOut 0.3s ease forwards; }
+
+  .toast-icon { font-size: 18px; flex-shrink: 0; }
+
+  .toast-body { flex: 1; }
+  .toast-title { font-family: var(--font-head); font-weight: 700; font-size: 13px; margin-bottom: 2px; }
+  .toast-msg { font-size: 11px; color: var(--muted); }
+
+  .toast.success { border-color: rgba(0,229,160,0.3); }
+  .toast.success .toast-title { color: var(--green); }
+  .toast.error { border-color: rgba(255,77,109,0.3); }
+  .toast.error .toast-title { color: var(--red); }
+  .toast.info { border-color: rgba(77,159,255,0.3); }
+  .toast.info .toast-title { color: var(--blue); }
+
+  /* ── DIVIDER ── */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 16px 0;
+  }
+
+  /* ── PROCESSING ANIMATION ── */
+  @keyframes processingPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(0,229,160,0.4); }
+    50% { box-shadow: 0 0 0 12px rgba(0,229,160,0); }
+  }
+
+  .btn-process.processing {
+    animation: processingPulse 1s infinite;
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .orders-scroll { max-height: 480px; overflow-y: auto; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: repeat(3, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div id="toast-container"></div>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🍔</div>
+      <div class="logo-text">
+        <h1>FastQueue</h1>
+        <span>Order Management System</span>
+      </div>
+    </div>
+    <div class="status-badge">
+      <div class="status-dot"></div>
+      Server Online — localhost:8080
+    </div>
+  </header>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Dalam Antrean</div>
+      <div class="stat-value" id="stat-queue">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Diproses</div>
+      <div class="stat-value" id="stat-processed">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Order</div>
+      <div class="stat-value" id="stat-total">0</div>
+    </div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="main-grid">
+
+    <!-- LEFT: FORM -->
+    <div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="icon">📝</span>
+            Tambah Pesanan
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="form-group">
+            <label class="form-label">Nama Pelanggan</label>
+            <input class="form-input" id="input-customer" type="text" placeholder="cth. Budi Santoso">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Menu Pesanan</label>
+            <input class="form-input" id="input-menu" type="text" placeholder="cth. Burger Spesial">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Jumlah</label>
+            <input class="form-input" id="input-qty" type="number" placeholder="1" min="1">
+          </div>
+          <button class="btn btn-primary" id="btn-add" onclick="addOrder()">
+            + Tambahkan ke Antrean
+          </button>
+
+          <div class="divider"></div>
+
+          <button class="btn btn-process" id="btn-process" onclick="processOrder()">
+            ⚡ Proses Pesanan Berikutnya
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: TABS -->
+    <div class="panel">
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('queue', this)">
+          <span>🕐 Antrean</span>
+          <span class="tab-count" id="tab-queue-count">0</span>
+        </div>
+        <div class="tab" onclick="switchTab('history', this)">
+          <span>📋 Riwayat</span>
+          <span class="tab-count" id="tab-history-count">0</span>
+        </div>
+      </div>
+
+      <!-- TAB: QUEUE -->
+      <div class="tab-panel active orders-scroll" id="tab-queue">
+        <div id="queue-list">
+          <div class="empty-state">
+            <div class="empty-icon">🕐</div>
+            <p>Belum ada pesanan<br>dalam antrean</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: HISTORY -->
+      <div class="tab-panel orders-scroll" id="tab-history">
+        <div id="history-list">
+          <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <p>Belum ada riwayat<br>pesanan diproses</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const API = 'http://localhost:8080';
+
+  // ── TOAST ──────────────────────────────────────────────
+  function showToast(type, title, msg) {
+    const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.innerHTML = `
+      <span class="toast-icon">${icons[type]}</span>
+      <div class="toast-body">
+        <div class="toast-title">${title}</div>
+        <div class="toast-msg">${msg}</div>
+      </div>`;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => {
+      el.classList.add('removing');
+      setTimeout(() => el.remove(), 300);
+    }, 3500);
+  }
+
+  // ── STATS BUMP ANIMATION ───────────────────────────────
+  function bumpStat(id) {
+    const el = document.getElementById(id);
+    el.classList.add('bump');
+    setTimeout(() => el.classList.remove('bump'), 400);
+  }
+
+  // ── TAB SWITCH ─────────────────────────────────────────
+  function switchTab(name, el) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById(`tab-${name}`).classList.add('active');
+  }
+
+  // ── RENDER QUEUE ───────────────────────────────────────
+  function renderQueue(data) {
+    const list = document.getElementById('queue-list');
+    const count = data.count || 0;
+
+    document.getElementById('tab-queue-count').textContent = count;
+    document.getElementById('stat-queue').textContent = count;
+
+    if (count === 0) {
+      list.innerHTML = `<div class="empty-state"><div class="empty-icon">🕐</div><p>Belum ada pesanan<br>dalam antrean</p></div>`;
+      return;
+    }
+
+    list.innerHTML = data.queue.map(o => `
+      <div class="order-card" id="order-${o.order_id}">
+        <div class="order-position">${o.position}</div>
+        <div class="order-info">
+          <div class="order-customer">${o.customer}</div>
+          <div class="order-menu">${o.menu}</div>
+        </div>
+        <div class="order-meta">
+          <div class="order-id">#${String(o.order_id).padStart(4,'0')}</div>
+          <div class="order-qty">×${o.quantity}</div>
+        </div>
+      </div>`).join('');
+  }
+
+  // ── RENDER HISTORY ─────────────────────────────────────
+  function renderHistory(data) {
+    const list = document.getElementById('history-list');
+    const count = data.count || 0;
+
+    document.getElementById('tab-history-count').textContent = count;
+    document.getElementById('stat-processed').textContent = count;
+
+    if (count === 0) {
+      list.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>Belum ada riwayat<br>pesanan diproses</p></div>`;
+      return;
+    }
+
+    list.innerHTML = data.history.map(o => `
+      <div class="order-card">
+        <div class="order-history-icon">✓</div>
+        <div class="order-info">
+          <div class="order-customer">${o.customer}</div>
+          <div class="order-menu">${o.menu}</div>
+        </div>
+        <div class="order-meta">
+          <div class="order-id">#${String(o.order_id).padStart(4,'0')}</div>
+          <div class="order-qty">×${o.quantity}</div>
+        </div>
+      </div>`).join('');
+  }
+
+  // ── FETCH ALL DATA ─────────────────────────────────────
+  async function fetchAll() {
+    try {
+      const [qRes, hRes] = await Promise.all([
+        fetch(`${API}/queue`),
+        fetch(`${API}/history`)
+      ]);
+      const qData = await qRes.json();
+      const hData = await hRes.json();
+      renderQueue(qData);
+      renderHistory(hData);
+      // Update total
+      const total = (qData.count || 0) + (hData.count || 0);
+      document.getElementById('stat-total').textContent = total;
+    } catch(e) {
+      // Server mungkin belum siap
+    }
+  }
+
+  // ── ADD ORDER ──────────────────────────────────────────
+  async function addOrder() {
+    const customer = document.getElementById('input-customer').value.trim();
+    const menu     = document.getElementById('input-menu').value.trim();
+    const qty      = parseInt(document.getElementById('input-qty').value);
+
+    if (!customer || !menu || !qty || qty < 1) {
+      showToast('error', 'Input Tidak Valid', 'Semua field wajib diisi dengan benar');
+      return;
+    }
+
+    const btn = document.getElementById('btn-add');
+    btn.disabled = true;
+    btn.textContent = 'Menambahkan...';
+
+    try {
+      const res = await fetch(`${API}/order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customer, menu, quantity: qty })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        showToast('success', 'Pesanan Ditambahkan!', `${customer} — ${menu} ×${qty}`);
+        document.getElementById('input-customer').value = '';
+        document.getElementById('input-menu').value = '';
+        document.getElementById('input-qty').value = '';
+        bumpStat('stat-queue');
+        bumpStat('stat-total');
+        await fetchAll();
+      } else {
+        showToast('error', 'Gagal', data.message);
+      }
+    } catch(e) {
+      showToast('error', 'Koneksi Gagal', 'Pastikan server berjalan di port 8080');
+    }
+
+    btn.disabled = false;
+    btn.textContent = '+ Tambahkan ke Antrean';
+  }
+
+  // ── PROCESS ORDER ──────────────────────────────────────
+  async function processOrder() {
+    const btn = document.getElementById('btn-process');
+    btn.disabled = true;
+    btn.classList.add('processing');
+    btn.textContent = '⚡ Memproses...';
+
+    try {
+      const res = await fetch(`${API}/process`, { method: 'POST' });
+      const data = await res.json();
+      if (data.status === 'success') {
+        const o = data.data;
+        showToast('success', 'Pesanan Diproses!', `${o.customer} — ${o.menu} ×${o.quantity}`);
+        bumpStat('stat-processed');
+        await fetchAll();
+      } else {
+        showToast('info', 'Antrean Kosong', 'Tidak ada pesanan yang perlu diproses');
+      }
+    } catch(e) {
+      showToast('error', 'Koneksi Gagal', 'Pastikan server berjalan di port 8080');
+    }
+
+    btn.disabled = false;
+    btn.classList.remove('processing');
+    btn.textContent = '⚡ Proses Pesanan Berikutnya';
+  }
+
+  // ── ENTER KEY ──────────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') addOrder();
+  });
+
+  // ── AUTO REFRESH (setiap 5 detik) ─────────────────────
+  fetchAll();
+  setInterval(fetchAll, 5000);
+</script>
+</body>
+</html>
