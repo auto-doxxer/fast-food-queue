@@ -4,8 +4,6 @@ Backend REST API sistem antrean restoran menggunakan C++ dan Crow Framework.
 
 > Frontend: https://github.com/auto-doxxer/fast-food-frontend
 
----
-
 ## Cara Menjalankan
 
 ### 1. Download dependensi
